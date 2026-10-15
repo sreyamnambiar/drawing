@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Living Kolam</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Yatra+One&display=swap" rel="stylesheet">
+<style>
+/* Layout: a night-floor canvas on the left with a story caption over it, a control column on the right; stacks on phones.
+   Single committed look: the page is a projection in a dark doorway, so it stays dark in both themes. */
+:root {
+  color-scheme: dark;
+  --ground: #12163A;
+  --ground-2: #1B2150;
+  --ground-3: #232A63;
+  --line: #323977;
+  --ink: #F4ECD8;
+  --muted: #A9ACCB;
+  --marigold: #F2A541;
+  --teal: #7FD1C9;
+  --display: "Yatra One", Georgia, serif;
+  --body: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 15px/1.55 var(--body);
+  padding-inline: 16px;
+  padding-block: 24px 40px;
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+header { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; }
+.kicker { font: 600 11px/1 var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 400 clamp(34px, 6vw, 54px)/1.05 var(--display); margin: 0; color: var(--ink); text-wrap: balance; }
+.lede { max-width: 60ch; color: var(--muted); margin: 6px 0 0; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; align-items: start; }
+@media (max-width: 860px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.floor-wrap { position: relative; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: var(--ground); }
+canvas#floor { display: block; width: 100%; aspect-ratio: 1 / 1; touch-action: none; cursor: crosshair; }
+canvas#floor:focus-visible { outline: 2px solid var(--marigold); outline-offset: -2px; }
+.caption {
+  position: absolute; left: 0; right: 0; bottom: 0; margin: 0;
+  padding: 36px 16px 16px; text-align: center;
+  font: 500 clamp(14px, 2.6vw, 19px)/1.35 var(--body); color: #FFF7E6;
+  background: linear-gradient(to bottom, rgba(8, 10, 30, 0), rgba(8, 10, 30, 0.72));
+  pointer-events: none; min-height: 1.35em; text-wrap: balance;
+}
+.panel { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.label { font: 600 11px/1 var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.count { font: 400 46px/1 var(--display); font-variant-numeric: tabular-nums; margin: 0; }
+.count small { font: 500 14px var(--body); color: var(--muted); }
+.status { margin: 8px 0 0; color: var(--ink); min-height: 3em; }
+.key { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; color: var(--muted); font-size: 13px; }
+.key span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.blurb { margin: 10px 0 0; font-size: 13.5px; color: var(--muted); min-height: 3em; }
+.controls { display: flex; flex-direction: column; gap: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+button {
+  font: 500 14px/1 var(--body);
+  color: var(--ink);
+  background: var(--ground-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 11px 14px;
+  cursor: pointer;
+}
+button:hover { border-color: var(--muted); }
+button:focus-visible, input[type="range"]:focus-visible { outline: 2px solid var(--marigold); outline-offset: 2px; }
+button[aria-pressed="true"] { border-color: var(--marigold); }
+button.primary { background: var(--marigold); color: #1A1230; border-color: var(--marigold); font-weight: 600; padding: 13px 16px; }
+button.primary[aria-pressed="true"] { background: var(--ground-3); color: var(--ink); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg button { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: 10px 12px; }
+.seg button span { font-size: 12px; color: var(--muted); font-weight: 400; }
+.seg button[aria-pressed="true"] { background: var(--ground-3); }
+.slider label { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+input[type="range"] { width: 100%; accent-color: var(--marigold); margin: 0; }
+canvas#camview { width: 160px; max-width: 100%; aspect-ratio: 4 / 3; border: 1px solid var(--line); border-radius: 4px; background: #0b0e2a; }
+.camnote { margin: 0; font-size: 13px; color: var(--muted); min-height: 1.5em; }
+.notes { border-top: 1px solid var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 14px; }
+.notes p { margin: 0; font-size: 13.5px; color: var(--muted); }
+.notes b { color: var(--ink); font-weight: 600; }
+footer { margin-top: 28px; color: var(--muted); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">DJXHack 2026 &middot; Everyday Magic</div>
+    <h1>Living Kolam</h1>
+    <p class="lede">Walk across the floor and the dots answer. Your path draws the loops, a second person mirrors you, and together you complete the pattern. Play the story first, then take over.</p>
+  </header>
+
+  <div class="stage">
+    <div class="floor-wrap">
+      <canvas id="floor" tabindex="0" aria-label="Doorway floor. Move your pointer, touch, or use the arrow keys to walk across the dots."></canvas>
+      <p class="caption" id="caption" aria-live="polite"></p>
+    </div>
+
+    <div class="panel">
+      <section>
+        <p class="label">Dots drawn</p>
+        <p class="count"><output id="count">0</output> <small>of <span id="total">41</span></small></p>
+        <p class="status" id="status" aria-live="polite">Move across the floor to begin.</p>
+        <div class="key">
+          <span><i class="sw" id="swA"></i>Sreya</span>
+          <span><i class="sw" id="swB"></i>Paati</span>
+          <span><i class="sw" id="swC"></i>Together</span>
+        </div>
+      </section>
+
+      <section>
+        <p class="label">Tradition</p>
+        <div class="seg" role="group" aria-label="Tradition">
+          <button type="button" data-t="kolam" aria-pressed="true">Kolam<span>Tamil Nadu</span></button>
+          <button type="button" data-t="rangoli" aria-pressed="false">Rangoli<span>Maharashtra, Gujarat</span></button>
+          <button type="button" data-t="alpona" aria-pressed="false">Alpona<span>West Bengal</span></button>
+          <button type="button" data-t="aipan" aria-pressed="false">Aipan<span>Uttarakhand</span></button>
+        </div>
+        <p class="blurb" id="blurb"></p>
+      </section>
+
+      <section class="controls">
+        <button id="play" class="primary" type="button" aria-pressed="false">Play the story</button>
+        <div class="row">
+          <button id="mirror" type="button" aria-pressed="true">Paati mirrors me: On</button>
+          <button id="sound" type="button" aria-pressed="false">Sound: Off</button>
+          <button id="camera" type="button" aria-pressed="false">Camera: Off</button>
+          <button id="clear" type="button">Clear floor</button>
+        </div>
+        <div class="slider">
+          <label for="sun"><span>Dawn</span><span>Sunrise</span></label>
+          <input id="sun" type="range" min="0" max="100" value="0">
+        </div>
+        <canvas id="camview" width="160" height="120" hidden aria-label="Camera motion preview"></canvas>
+        <p class="camnote" id="camnote"></p>
+      </section>
+
+      <section class="notes">
+        <p><b>What works here.</b> Dots scatter around your cursor, finger or camera motion. Loops draw themselves along your path, a second finger or a second moving person acts as Paati, and each loop plays a soft note when sound is on. The sunrise slider clears the floor.</p>
+        <p><b>What is simulated.</b> Cursor, touch or camera motion stands in for footsteps. The real installation would read feet with a floor-facing depth camera and project the light with a short-throw projector. Patterns are simplified generative drawings inspired by each tradition, not traditional designs.</p>
+      </section>
+    </div>
+  </div>
+
+  <footer>Concept and prototype by Sreya M Nambiar for DJXHack 2026.</footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var cvs = $('floor'), ctx = cvs.getContext('2d');
+  var countEl = $('count'), totalEl = $('total'), statusEl = $('status'), capEl = $('caption'), blurbEl = $('blurb');
+  var mirrorBtn = $('mirror'), soundBtn = $('sound'), camBtn = $('camera'), clearBtn = $('clear'), playBtn = $('play'), sunEl = $('sun');
+  var camView = $('camview'), camNote = $('camnote');
+  var segBtns = Array.prototype.slice.call(document.querySelectorAll('.seg button'));
+  var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function mix(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+  function rgb(c, a) { return 'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + (a == null ? 1 : a) + ')'; }
+  function smooth(a, b, x) { var t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
+
+  /* ---------- traditions ---------- */
+  var THEMES = {
+    kolam: {
+      rows: [1, 3, 5, 7, 9, 7, 5, 3, 1], sp: 0.18, shape: 'diamond', R: 0.95,
+      bg: [[27, 33, 80], [14, 18, 50]], dawn: [[250, 222, 176], [233, 160, 104]],
+      ink: [244, 236, 216], a: [242, 165, 65], b: [127, 209, 201], dotDay: [70, 56, 110], palette: null,
+      blurb: 'Rice-flour loops drawn around a grid of dots at the doorstep each dawn.'
+    },
+    rangoli: {
+      rows: [7, 7, 7, 7, 7, 7, 7], sp: 0.24, shape: 'circle', R: 0.62,
+      bg: [[40, 22, 76], [20, 12, 46]], dawn: [[255, 226, 190], [236, 170, 120]],
+      ink: [255, 238, 218], a: [255, 150, 80], b: [110, 220, 200], dotDay: [80, 40, 90],
+      palette: [[255, 138, 76], [255, 86, 156], [255, 196, 64], [110, 220, 200], [160, 140, 255]],
+      blurb: 'Bright colored patterns made at the entrance, especially for festivals.'
+    },
+    alpona: {
+      rows: [1, 3, 5, 3, 1], sp: 0.3, shape: 'flower', R: 0.9,
+      bg: [[20, 52, 76], [8, 26, 46]], dawn: [[250, 232, 200], [222, 172, 126]],
+      ink: [250, 248, 240], a: [255, 214, 150], b: [150, 225, 235], dotDay: [40, 70, 90], palette: null,
+      blurb: 'Rice-paste lotus and leaf patterns painted on the floor.'
+    },
+    aipan: {
+      rows: [5, 5, 5, 5, 5], sp: 0.3, shape: 'square', R: 0.72,
+      bg: [[126, 40, 28], [74, 20, 16]], dawn: [[238, 182, 136], [208, 124, 88]],
+      ink: [252, 246, 234], a: [255, 210, 130], b: [255, 255, 255], dotDay: [96, 40, 30], palette: null,
+      blurb: 'White rice-paste designs on a red-ochre floor, made in Kumaon for festivals and rites.'
+    }
+  };
+  var themeKey = 'kolam', T = THEMES.kolam;
+  var dots = [], TOTAL = 0, SP = 0.2, PUSH = 0.22, TOUCH = 0.17, DOT_R = 0.011, shape = [];
+  var lastCount = -1;
+
+  function sampleShape(kind, R, N) {
+    var pts = [], i, t, c, s, x, y;
+    function sg(v) { return v < 0 ? -1 : 1; }
+    for (i = 0; i <= N; i++) {
+      t = (i / N) * Math.PI * 2 - Math.PI / 2;
+      c = Math.cos(t); s = Math.sin(t);
+      if (kind === 'circle') { x = c; y = s; }
+      else if (kind === 'diamond') { x = sg(c) * Math.pow(Math.abs(c), 1.6); y = sg(s) * Math.pow(Math.abs(s), 1.6); }
+      else if (kind === 'square') { x = sg(c) * Math.pow(Math.abs(c), 0.5); y = sg(s) * Math.pow(Math.abs(s), 0.5); }
+      else { var r = Math.cos(2 * t); x = r * c; y = r * s; }
+      pts.push([x * R, y * R]);
+    }
+    return pts;
+  }
+
+  function buildTheme(key) {
+    themeKey = key; T = THEMES[key];
+    SP = T.sp; PUSH = SP * 1.1; TOUCH = SP * 0.85; DOT_R = SP * 0.055;
+    var nr = T.rows.length;
+    dots = [];
+    T.rows.forEach(function (cnt, r) {
+      for (var k = 0; k < cnt; k++) {
+        dots.push({ x: (k - (cnt - 1) / 2) * SP, y: ((nr - 1) / 2 - r) * SP, ox: 0, oy: 0, vx: 0, vy: 0, own: 0, last: 0, ring: 0, sounded: false, row: r, col: k });
+      }
+    });
+    TOTAL = dots.length;
+    shape = sampleShape(T.shape, T.R * SP, 96);
+    totalEl.textContent = TOTAL;
+    lastCount = -1;
+    $('swA').style.background = rgb(T.a);
+    $('swB').style.background = rgb(T.b);
+    $('swC').style.background = rgb(T.ink);
+    blurbEl.textContent = T.blurb;
+    segBtns.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-t') === key)); });
+  }
+
+  /* ---------- state ---------- */
+  var pointers = {}, userActed = false, prevActed = false, kbd = { x: 0, y: -0.7, until: 0 };
+  var mirrorOn = true, soundOn = false, audio = null, lastNote = 0;
+  var sunVal = 0, sunAuto = false, completeAmt = 0, complete = false, completeFor = 0, ghostT = 0;
+  var feet = [], lastFoot = { 1: null, 2: null }, side = { 1: 1, 2: 1 }, trails = { 1: [], 2: [] };
+  var W = 0, H = 0, DPR = 1, lastCap = null, lastMsg = '';
+  var currentWalkers = [];
+  var story = { on: false, t: 0 };
+  var SCALE = [523.25, 587.33, 659.25, 783.99, 880, 1046.5];
+
+  /* ---------- stone floor texture ---------- */
+  var stone = document.createElement('canvas');
+  stone.width = 512; stone.height = 512;
+  (function makeStone() {
+    var c = stone.getContext('2d'), seed = 7, i;
+    function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    var slabs = [[0, 0, 256, 250], [256, 0, 256, 250], [0, 250, 170, 262], [170, 250, 250, 262], [420, 250, 92, 262]];
+    slabs.forEach(function (s) {
+      c.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,' + (rnd() * 0.07) + ')' : 'rgba(0,0,0,' + (rnd() * 0.1) + ')';
+      c.fillRect(s[0], s[1], s[2], s[3]);
+    });
+    for (i = 0; i < 14; i++) {
+      var gx = rnd() * 512, gy = rnd() * 512, gr = 30 + rnd() * 70;
+      var g = c.createRadialGradient(gx, gy, 0, gx, gy, gr);
+      g.addColorStop(0, 'rgba(0,0,0,0.10)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g; c.fillRect(gx - gr, gy - gr, gr * 2, gr * 2);
+    }
+    for (i = 0; i < 2600; i++) {
+      c.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.12)';
+      c.fillRect(rnd() * 512, rnd() * 512, 1 + rnd() * 1.5, 1 + rnd() * 1.5);
+    }
+    c.lineCap = 'butt';
+    slabs.forEach(function (s) {
+      c.strokeStyle = 'rgba(0,0,0,0.55)'; c.lineWidth = 6; c.strokeRect(s[0], s[1], s[2], s[3]);
+      c.strokeStyle = 'rgba(255,255,255,0.07)'; c.lineWidth = 2; c.strokeRect(s[0] + 4, s[1] + 4, s[2] - 8, s[3] - 8);
+    });
+  })();
+
+  function resize() {
+    var r = cvs.getBoundingClientRect();
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.max(2, Math.round(r.width * DPR));
+    H = Math.max(2, Math.round(r.height * DPR));
+    cvs.width = W; cvs.height = H;
+  }
+  if (window.ResizeObserver) { new ResizeObserver(resize).observe(cvs); } else { window.addEventListener('resize', resize); }
+  resize();
+
+  /* ---------- input: pointer, keyboard ---------- */
+  function toUnit(e) {
+    var r = cvs.getBoundingClientRect();
+    return { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -(((e.clientY - r.top) / r.height) * 2 - 1) };
+  }
+  cvs.addEventListener('pointerdown', function (e) {
+    if (story.on) return;
+    userActed = true;
+    var u = toUnit(e);
+    pointers[e.pointerId] = { x: u.x, y: u.y };
+    try { cvs.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  cvs.addEventListener('pointermove', function (e) {
+    if (story.on) return;
+    var u = toUnit(e);
+    if (e.pointerType === 'mouse') { userActed = true; pointers[e.pointerId] = { x: u.x, y: u.y }; }
+    else if (pointers[e.pointerId]) { pointers[e.pointerId].x = u.x; pointers[e.pointerId].y = u.y; }
+  });
+  cvs.addEventListener('pointerup', function (e) { if (e.pointerType !== 'mouse') delete pointers[e.pointerId]; });
+  cvs.addEventListener('pointercancel', function (e) { delete pointers[e.pointerId]; });
+  cvs.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') delete pointers[e.pointerId]; });
+  cvs.addEventListener('keydown', function (e) {
+    var map = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
+    var d = map[e.key];
+    if (!d || story.on) return;
+    e.preventDefault();
+    userActed = true;
+    kbd.x = clamp(kbd.x + d[0] * 0.06, -0.95, 0.95);
+    kbd.y = clamp(kbd.y + d[1] * 0.06, -0.95, 0.95);
+    kbd.until = performance.now() + 700;
+  });
+
+  /* ---------- input: camera motion ---------- */
+  var cam = { on: false, video: null, stream: null, c: document.createElement('canvas'), cx: null, prev: null, pos: [null, null], seen: [0, 0] };
+  cam.c.width = 48; cam.c.height = 36;
+
+  function processCam() {
+    var v = cam.video;
+    if (!v || v.readyState < 2) return;
+    if (!cam.cx) cam.cx = cam.c.getContext('2d', { willReadFrequently: true });
+    cam.cx.drawImage(v, 0, 0, 48, 36);
+    var data = cam.cx.getImageData(0, 0, 48, 36).data, n = 48 * 36, gray = new Uint8Array(n), i;
+    for (i = 0; i < n; i++) gray[i] = (data[i * 4] * 0.3 + data[i * 4 + 1] * 0.59 + data[i * 4 + 2] * 0.11) | 0;
+    var pts = [];
+    if (cam.prev) { for (i = 0; i < n; i++) { if (Math.abs(gray[i] - cam.prev[i]) > 26) pts.push(i); } }
+    cam.prev = gray;
+    var found = [null, null], sx = 0, sy = 0;
+    if (pts.length > 10) {
+      pts.forEach(function (p) { sx += p % 48; sy += Math.floor(p / 48); });
+      var c1 = { x: sx / pts.length, y: sy / pts.length };
+      found[0] = c1;
+      var rest = pts.filter(function (p) { var dx = p % 48 - c1.x, dy = Math.floor(p / 48) - c1.y; return dx * dx + dy * dy > 121; });
+      if (rest.length > 14) {
+        sx = 0; sy = 0;
+        rest.forEach(function (p) { sx += p % 48; sy += Math.floor(p / 48); });
+        found[1] = { x: sx / rest.length, y: sy / rest.length };
+      }
+    }
+    var now = performance.now();
+    for (var k = 0; k < 2; k++) {
+      var f = found[k];
+      if (f) {
+        var ux = -((f.x / 48) * 2 - 1), uy = -((f.y / 36) * 2 - 1);
+        if (cam.pos[k]) { cam.pos[k].x += (ux - cam.pos[k].x) * 0.45; cam.pos[k].y += (uy - cam.pos[k].y) * 0.45; }
+        else cam.pos[k] = { x: ux, y: uy };
+        cam.seen[k] = now;
+      } else if (cam.pos[k] && now - cam.seen[k] > 700) cam.pos[k] = null;
+    }
+    if (found[0]) userActed = true;
+    var pv = camView.getContext('2d');
+    pv.save(); pv.scale(-1, 1); pv.drawImage(v, -160, 0, 160, 120); pv.restore();
+    for (k = 0; k < 2; k++) {
+      if (!cam.pos[k]) continue;
+      pv.beginPath();
+      pv.arc((cam.pos[k].x + 1) / 2 * 160, (1 - (cam.pos[k].y + 1) / 2) * 120, 7, 0, Math.PI * 2);
+      pv.fillStyle = rgb(k === 0 ? T.a : T.b, 0.85);
+      pv.fill();
+    }
+  }
+  function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      camNote.textContent = 'Camera is not available in this browser or view. Mouse and touch still work.';
+      return;
+    }
+    camNote.textContent = 'Asking for camera access...';
+    navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240, facingMode: 'user' }, audio: false }).then(function (stream) {
+      cam.stream = stream;
+      var v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.srcObject = stream;
+      cam.video = v;
+      var pr = v.play(); if (pr && pr.catch) pr.catch(function () {});
+      cam.on = true; cam.prev = null;
+      camBtn.setAttribute('aria-pressed', 'true'); camBtn.textContent = 'Camera: On';
+      camView.hidden = false;
+      camNote.textContent = 'Wave a hand or walk in front of the camera. A second moving person draws as Paati.';
+    }).catch(function () {
+      camNote.textContent = 'Camera is blocked or not available here. Mouse and touch still work.';
+    });
+  }
+  function stopCamera() {
+    if (cam.stream) cam.stream.getTracks().forEach(function (t) { t.stop(); });
+    cam.on = false; cam.stream = null; cam.video = null; cam.pos = [null, null]; cam.prev = null;
+    camBtn.setAttribute('aria-pressed', 'false'); camBtn.textContent = 'Camera: Off';
+    camView.hidden = true; camNote.textContent = '';
+  }
+
+  /* ---------- the story ---------- */
+  var BEATS = [
+    { t: 0, txt: 'Dawn. The doorway waits.' },
+    { t: 4, txt: 'Step in. The dots scatter.' },
+    { t: 9, txt: 'Walk. Your path draws the pattern.' },
+    { t: 20, txt: 'A second person joins. Her loops mirror yours.' },
+    { t: 31, txt: 'Stand together. The pattern completes.' },
+    { t: 38, txt: 'At sunrise, it fades. Tomorrow, it begins again.' }
+  ];
+  function spiral(s) { var r = 0.78 - 0.72 * s, th = 0.6 + Math.PI * 2 * 3.1 * s; return { x: Math.cos(th) * r, y: Math.sin(th) * r }; }
+  function storyWalkers() {
+    var t = story.t, out = [], p;
+    if (t < 4 || t >= 38) return out;
+    if (t < 31) {
+      p = spiral(clamp((t - 4) / 27, 0, 1));
+      var k = 1 + 0.35 * (1 - smooth(4, 9, t));
+      p = { x: p.x * k, y: p.y * k };
+    } else p = { x: 0.09, y: 0.03 };
+    out.push({ x: p.x, y: p.y, who: 1 });
+    if (t >= 20) out.push(t < 31 ? { x: -p.x, y: -p.y, who: 2 } : { x: -0.09, y: -0.03, who: 2 });
+    return out;
+  }
+  function setCaption(txt) { if (txt !== lastCap) { lastCap = txt; capEl.textContent = txt; } }
+  function startStory() {
+    resetDots();
+    story.on = true; story.t = 0; story.did31 = false; story.did38 = false;
+    prevActed = userActed; userActed = true;
+    pointers = {};
+    sunAuto = false; sunVal = 0; sunEl.value = 0;
+    playBtn.textContent = 'Stop the story'; playBtn.setAttribute('aria-pressed', 'true');
+  }
+  function stopStory() {
+    story.on = false; userActed = prevActed;
+    playBtn.textContent = 'Play the story'; playBtn.setAttribute('aria-pressed', 'false');
+    setCaption('');
+  }
+  function storyUpdate() {
+    var cap = BEATS[0].txt;
+    for (var i = 0; i < BEATS.length; i++) if (story.t >= BEATS[i].t) cap = BEATS[i].txt;
+    setCaption(cap);
+    if (story.t >= 31 && !story.did31) { story.did31 = true; completeNow(); }
+    if (story.t >= 38 && !story.did38) { story.did38 = true; sunAuto = true; }
+    if (story.t >= 47) stopStory();
+  }
+
+  /* ---------- sound ---------- */
+  function chime() {
+    if (!soundOn || !audio) return;
+    var now = audio.currentTime;
+    [523.25, 783.99, 1046.5, 1318.5].forEach(function (f, i) {
+      var o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.19 / (i + 1), now + 0.02 + i * 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+      o.connect(g); g.connect(audio.destination);
+      o.start(now + i * 0.04); o.stop(now + 3);
+    });
+  }
+  function note(i) {
+    if (!soundOn || !audio) return;
+    var t = audio.currentTime;
+    if (t - lastNote < 0.07) return;
+    lastNote = t;
+    var o = audio.createOscillator(), g = audio.createGain();
+    o.type = 'sine'; o.frequency.value = SCALE[i % SCALE.length];
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.07, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+    o.connect(g); g.connect(audio.destination);
+    o.start(t); o.stop(t + 1);
+  }
+
+  /* ---------- simulation ---------- */
+  function ghost() {
+    var t = ghostT;
+    return { x: 0.55 * Math.sin(0.9 * t) + 0.2 * Math.sin(2.1 * t + 1), y: 0.55 * Math.sin(1.25 * t + 0.8) + 0.18 * Math.sin(2.7 * t) };
+  }
+  function getWalkers(seed) {
+    if (story.on) return storyWalkers();
+    var list = [];
+    if (cam.on) cam.pos.forEach(function (p) { if (p) list.push({ x: p.x, y: p.y }); });
+    Object.keys(pointers).forEach(function (id) { list.push({ x: pointers[id].x, y: pointers[id].y }); });
+    if (performance.now() < kbd.until) list.push({ x: kbd.x, y: kbd.y });
+    if (!list.length && !userActed && !complete && (!reduce || seed)) list.push(ghost());
+    var out = [];
+    if (list[0]) out.push({ x: list[0].x, y: list[0].y, who: 1 });
+    if (list[1]) out.push({ x: list[1].x, y: list[1].y, who: 2 });
+    else if (list[0] && mirrorOn) out.push({ x: -list[0].x, y: -list[0].y, who: 2 });
+    return out;
+  }
+  function resetDots() {
+    dots.forEach(function (d) { d.own = 0; d.last = 0; d.ring = 0; d.sounded = false; });
+    complete = false; completeFor = 0;
+    feet.length = 0; trails[1].length = 0; trails[2].length = 0;
+  }
+  function completeNow() {
+    if (complete) return;
+    dots.forEach(function (d) { if (!d.own) d.own = 3; });
+    complete = true; completeFor = 0;
+    chime();
+  }
+
+  function step(dt, seed) {
+    if (story.on) { story.t += dt; storyUpdate(); }
+    if (cam.on) processCam();
+    if (!story.on && !complete && !userActed && (!reduce || seed)) ghostT += dt;
+    var ws = getWalkers(seed);
+    currentWalkers = ws;
+    var drawn = 0, i, j;
+    for (i = 0; i < dots.length; i++) {
+      var d = dots[i], tx = 0, ty = 0, bestD = 9, best = 0;
+      for (j = 0; j < ws.length; j++) {
+        var w = ws[j];
+        var dx = d.x - w.x, dy = d.y - w.y, dist = Math.hypot(dx, dy) || 0.0001;
+        if (dist < PUSH) {
+          var k = (PUSH - dist) / PUSH;
+          tx += (dx / dist) * k * 0.1 * (SP / 0.2);
+          ty += (dy / dist) * k * 0.1 * (SP / 0.2);
+          /* scatter scales with spacing so every tradition feels the same */
+        }
+        if (dist < TOUCH) { d.own |= w.who; if (dist < bestD) { bestD = dist; best = w.who; } }
+      }
+      if (best) d.last = best;
+      d.vx += (tx - d.ox) * 160 * dt;
+      d.vy += (ty - d.oy) * 160 * dt;
+      var damp = Math.exp(-10 * dt);
+      d.vx *= damp; d.vy *= damp;
+      d.ox += d.vx * dt; d.oy += d.vy * dt;
+      if (d.own) {
+        d.ring += (1 - d.ring) * (1 - Math.exp(-5 * dt));
+        if (d.ring > 0.995) d.ring = 1;
+      }
+      if (d.ring >= 0.98) {
+        drawn++;
+        if (!d.sounded) { d.sounded = true; note(d.row * 2 + d.col); }
+      }
+    }
+    if (!story.on && !complete && drawn >= Math.ceil(TOTAL * 0.85)) completeNow();
+    if (complete) completeFor += dt;
+    completeAmt += ((complete ? 1 : 0) - completeAmt) * (1 - Math.exp(-3 * dt));
+    if (complete && !userActed && completeFor > 4.5) sunAuto = true;
+
+    if (sunAuto) {
+      sunVal = Math.min(1, sunVal + dt * 0.22);
+      sunEl.value = Math.round(sunVal * 100);
+    } else {
+      var target = parseFloat(sunEl.value) / 100;
+      sunVal += (target - sunVal) * (1 - Math.exp(-5 * dt));
+    }
+    if (sunVal >= 0.985) {
+      resetDots();
+      sunVal = 0; sunEl.value = 0; sunAuto = false;
+    }
+
+    /* footprints and light trails */
+    for (var who = 1; who <= 2; who++) {
+      var w2 = null, q;
+      for (q = 0; q < ws.length; q++) if (ws[q].who === who) w2 = ws[q];
+      if (!w2) { lastFoot[who] = null; }
+      else {
+        var lf = lastFoot[who];
+        if (!lf || Math.hypot(w2.x - lf.x, w2.y - lf.y) > 0.08) {
+          if (lf) {
+            var ang = Math.atan2(w2.y - lf.y, w2.x - lf.x);
+            side[who] *= -1;
+            feet.push({ x: w2.x - Math.sin(ang) * 0.02 * side[who], y: w2.y + Math.cos(ang) * 0.02 * side[who], a: ang, age: 0, who: who });
+          }
+          lastFoot[who] = { x: w2.x, y: w2.y };
+        }
+        var tr = trails[who], lt = tr[tr.length - 1];
+        if (!lt || Math.hypot(w2.x - lt.x, w2.y - lt.y) > 0.012) tr.push({ x: w2.x, y: w2.y, age: 0 });
+      }
+      var tt = trails[who];
+      for (q = tt.length - 1; q >= 0; q--) { tt[q].age += dt; if (tt[q].age > 1.6) tt.splice(q, 1); }
+    }
+    for (var f = feet.length - 1; f >= 0; f--) { feet[f].age += dt; if (feet[f].age > 2.6) feet.splice(f, 1); }
+    if (feet.length > 80) feet.splice(0, feet.length - 80);
+
+    if (drawn !== lastCount) { lastCount = drawn; countEl.textContent = drawn; }
+    var msg;
+    if (story.on) msg = 'Playing the story. Press Stop to take over.';
+    else if (complete) msg = 'Complete. The pattern holds until the sun rises.';
+    else if (cam.on && !cam.pos[0] && drawn === 0) msg = 'Camera on. Wave a hand or walk in front of it.';
+    else if (drawn === 0) msg = 'Move across the floor to begin.';
+    else if (!mirrorOn && drawn < TOTAL) msg = 'Turn Paati on, or walk the rest yourself.';
+    else if (drawn >= TOTAL * 0.6) msg = 'Almost there. Keep walking to complete the pattern.';
+    else msg = 'Keep walking. Your path draws the pattern.';
+    if (msg !== lastMsg) { lastMsg = msg; statusEl.textContent = msg; }
+    if (!story.on) setCaption(userActed ? '' : 'Move or touch the floor to draw');
+  }
+
+  /* ---------- drawing ---------- */
+  function strokeRing(d, X, Y) {
+    var n = Math.floor(d.ring * (shape.length - 1)), i;
+    if (n < 2) return;
+    ctx.beginPath();
+    ctx.moveTo(X + shape[0][0], Y + shape[0][1]);
+    for (i = 1; i <= n; i++) ctx.lineTo(X + shape[i][0], Y + shape[i][1]);
+    ctx.stroke();
+  }
+  function draw() {
+    if (!W) return;
+    var s = sunVal, i;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    var g = ctx.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.5, W * 0.75);
+    g.addColorStop(0, rgb(mix(T.bg[0], T.dawn[0], s)));
+    g.addColorStop(1, rgb(mix(T.bg[1], T.dawn[1], s)));
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 0.5; ctx.drawImage(stone, 0, 0, W, H); ctx.globalAlpha = 1;
+    var vg = ctx.createRadialGradient(W / 2, H / 2, W * 0.35, W / 2, H / 2, W * 0.75);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,' + (0.38 * (1 - 0.6 * s)) + ')');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    if (s > 0.01) {
+      var sg = ctx.createLinearGradient(0, 0, W * 0.4, H);
+      sg.addColorStop(0, 'rgba(255,214,150,' + (0.4 * s) + ')');
+      sg.addColorStop(1, 'rgba(255,214,150,0)');
+      ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    var ringAlpha = 1 - smooth(0.35, 0.92, s);
+    if (completeAmt > 0.01) {
+      var cg = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W * 0.5);
+      cg.addColorStop(0, rgb(T.a, 0.2 * completeAmt * ringAlpha));
+      cg.addColorStop(1, rgb(T.a, 0));
+      ctx.fillStyle = cg; ctx.fillRect(0, 0, W, H);
+    }
+
+    var S = W / 2;
+    ctx.setTransform(S, 0, 0, -S, W / 2, H / 2);
+    var px = 1 / S, footAlpha = 1 - 0.8 * s;
+
+    feet.forEach(function (f) {
+      var a = (1 - f.age / 2.6) * 0.6 * footAlpha;
+      ctx.save();
+      ctx.translate(f.x, f.y); ctx.rotate(f.a);
+      ctx.beginPath(); ctx.ellipse(0, 0, 0.026, 0.012, 0, 0, Math.PI * 2);
+      ctx.fillStyle = rgb(f.who === 1 ? T.a : T.b, a);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    var dotCol = mix(T.ink, T.dotDay, s);
+    for (i = 0; i < dots.length; i++) {
+      var d = dots[i], X = d.x + d.ox, Y = d.y + d.oy;
+      if (d.ring > 0.01 && ringAlpha > 0.01) {
+        var col;
+        if (T.palette) col = mix(T.palette[(d.row * 3 + d.col) % T.palette.length], T.ink, completeAmt * 0.2);
+        else col = mix(d.last === 1 ? T.a : d.last === 2 ? T.b : T.ink, T.ink, completeAmt);
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.strokeStyle = rgb(col, 0.18 * ringAlpha);
+        ctx.lineWidth = 7 * DPR * px;
+        strokeRing(d, X, Y);
+        ctx.save();
+        if (completeAmt > 0.02) {
+          ctx.shadowColor = rgb(T.a, 0.9 * completeAmt * ringAlpha);
+          ctx.shadowBlur = 14 * DPR * completeAmt;
+        }
+        ctx.strokeStyle = rgb(col, ringAlpha);
+        ctx.lineWidth = 2.6 * DPR * px;
+        strokeRing(d, X, Y);
+        ctx.restore();
+      }
+      ctx.beginPath();
+      ctx.arc(X, Y, DOT_R, 0, Math.PI * 2);
+      ctx.fillStyle = rgb(dotCol, 1 - 0.5 * s);
+      ctx.fill();
+    }
+
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    for (var who = 1; who <= 2; who++) {
+      var tr = trails[who], c2 = who === 1 ? T.a : T.b;
+      for (i = 1; i < tr.length; i++) {
+        var al = (1 - tr[i].age / 1.6) * 0.75 * footAlpha;
+        if (al <= 0) continue;
+        ctx.beginPath();
+        ctx.moveTo(tr[i - 1].x, tr[i - 1].y); ctx.lineTo(tr[i].x, tr[i].y);
+        ctx.strokeStyle = rgb(c2, al);
+        ctx.lineWidth = 3.4 * DPR * px;
+        ctx.stroke();
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+
+    currentWalkers.forEach(function (w) {
+      var c3 = w.who === 1 ? T.a : T.b;
+      ctx.beginPath(); ctx.arc(w.x, w.y, 0.07, 0, Math.PI * 2);
+      ctx.fillStyle = rgb(c3, 0.2 * footAlpha); ctx.fill();
+      ctx.beginPath(); ctx.arc(w.x, w.y, 0.016, 0, Math.PI * 2);
+      ctx.fillStyle = rgb(c3, 0.95 * footAlpha); ctx.fill();
+    });
+  }
+
+  /* ---------- controls ---------- */
+  function setTheme(key) {
+    if (!THEMES[key]) return;
+    if (story.on) stopStory();
+    pointers = {};
+    buildTheme(key);
+    complete = false; completeAmt = 0; completeFor = 0;
+    sunAuto = false; sunVal = 0; sunEl.value = 0;
+    feet.length = 0; trails[1].length = 0; trails[2].length = 0;
+    ghostT = 0;
+    try { history.replaceState(null, '', '#' + key); } catch (err) {}
+  }
+  segBtns.forEach(function (b) { b.addEventListener('click', function () { setTheme(b.getAttribute('data-t')); }); });
+  playBtn.addEventListener('click', function () { if (story.on) stopStory(); else startStory(); });
+  mirrorBtn.addEventListener('click', function () {
+    mirrorOn = !mirrorOn;
+    mirrorBtn.setAttribute('aria-pressed', String(mirrorOn));
+    mirrorBtn.textContent = 'Paati mirrors me: ' + (mirrorOn ? 'On' : 'Off');
+  });
+  soundBtn.addEventListener('click', function () {
+    soundOn = !soundOn;
+    soundBtn.setAttribute('aria-pressed', String(soundOn));
+    soundBtn.textContent = 'Sound: ' + (soundOn ? 'On' : 'Off');
+    if (soundOn) {
+      try {
+        if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+        if (audio.resume) audio.resume();
+        note(2);
+      } catch (err) { soundOn = false; soundBtn.setAttribute('aria-pressed', 'false'); soundBtn.textContent = 'Sound: Off'; }
+    }
+  });
+  camBtn.addEventListener('click', function () { if (cam.on) stopCamera(); else startCamera(); });
+  clearBtn.addEventListener('click', function () {
+    if (story.on) stopStory();
+    resetDots();
+    sunAuto = false; sunVal = 0; sunEl.value = 0;
+    userActed = true;
+  });
+
+  /* ---------- start ---------- */
+  var startKey = 'kolam';
+  try { var h = (location.hash || '').replace('#', ''); if (THEMES[h]) startKey = h; } catch (err) {}
+  buildTheme(startKey);
+  for (var n = 0; n < 45; n++) step(0.04, true);
+  draw();
+  var last = performance.now();
+  function frame(now) {
+    var dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    step(dt, false);
+    draw();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
